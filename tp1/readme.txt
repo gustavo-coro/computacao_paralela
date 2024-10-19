@@ -1,1 +1,0 @@
-TP1 de computação paralela
