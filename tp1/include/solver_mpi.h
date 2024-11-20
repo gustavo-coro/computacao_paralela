@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <mpi.h>
 #include "graph.h"
 
 int count_common_neighbors(node*, node*, int);
