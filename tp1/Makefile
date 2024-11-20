@@ -1,43 +1,107 @@
+# Thomas Daley
+# September 13, 2021
+
+# A generic build template for C/C++ programs
+
+# executable name
+EXE = app
+
+# C compiler
+CC = gcc
+# C++ compiler
+CXX = g++
+# linker
+LD = g++
+
+# C flags
+CFLAGS = -Wall -Wextra -Werror --std=gnu99 -g3
+# C++ flags
+CXXFLAGS = 
+# C/C++ flags
+CPPFLAGS = -Wall
+# dependency-generation flags
+DEPFLAGS = -MMD -MP
+# linker flags
+LDFLAGS = -lpthread
+# library flags
+LDLIBS = 
+# asan flags
 ASAN_FLAGS = -fsanitize=address -fno-omit-frame-pointer -Wno-format-security
+# asan library flags
 ASAN_LIBS  = -static-libasan
-CFLAGS    := -Wall -Wextra -Werror --std=gnu99 -g3
-LDFLAGS   += -lpthread
-CC := gcc
-RM := rm -rf
 
-.PHONY: all clean
+# build directories
+BIN = bin
+OBJ = obj
+SRC = src
 
-VPATH := ./src/ ./obj/ ./include/
+SOURCES := $(wildcard $(SRC)/*.c $(SRC)/*.cc $(SRC)/*.cpp $(SRC)/*.cxx)
 
-# Paths for .c, .h, and .o Files 
-SRC_PATH := ./src/
-OBJ_PATH := ./obj/
-INC_PATH := -I ./include
+OBJECTS := \
+	$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(wildcard $(SRC)/*.c)) \
+	$(patsubst $(SRC)/%.cc, $(OBJ)/%.o, $(wildcard $(SRC)/*.cc)) \
+	$(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(wildcard $(SRC)/*.cpp)) \
+	$(patsubst $(SRC)/%.cxx, $(OBJ)/%.o, $(wildcard $(SRC)/*.cxx))
 
-# Executable Names
-TARGET := main
+# include compiler-generated dependency rules
+DEPENDS := $(OBJECTS:.o=.d)
 
-# Source files
-SRC := main.c server.c queue_server.c iterative_server.c concurrent_server.c thread_server.c
+# compile C source
+COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) -c -o $@
+# compile C++ source
+COMPILE.cxx = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) -c -o $@
+# link objects
+LINK.o = $(LD) $(LDFLAGS) $(LDLIBS) $(ASAN_FLAGS) $(ASAN_LIBS) $(OBJECTS) -o $@
 
-# Object files
-OBJ := $(OBJ_PATH)server.o $(OBJ_PATH)queue_server.o $(OBJ_PATH)iterative_server.o $(OBJ_PATH)concurrent_server.o $(OBJ_PATH)thread_server.o $(OBJ_PATH)main.o
+.DEFAULT_GOAL = all
 
-# Build all
-all: $(TARGET)
+.PHONY: all
+all: $(BIN)/$(EXE)
 
-# Build .o files
-$(OBJ_PATH)%.o: $(SRC_PATH)%.c
-	@mkdir -p $(OBJ_PATH)
-	@echo [CC] $<
-	@$(CC) $(C_FLAGS) -o $@ -c $< $(INC_PATH)                  
+$(BIN)/$(EXE): $(SRC) $(OBJ) $(BIN) $(OBJECTS)
+	$(LINK.o)
 
-# Build server binary
-$(TARGET): $(OBJ)
-	@echo [INFO] Creating Server Binary Executable [$(TARGET)]
-	@$(CC) -o $@ $^
+$(SRC):
+	mkdir -p $(SRC)
 
-# Clean all the object files and the binaries
+$(OBJ):
+	mkdir -p $(OBJ)
+
+$(BIN):
+	mkdir -p $(BIN)
+
+$(OBJ)/%.o:	$(SRC)/%.c
+	$(COMPILE.c) $<
+
+$(OBJ)/%.o:	$(SRC)/%.cc
+	$(COMPILE.cxx) $<
+
+$(OBJ)/%.o:	$(SRC)/%.cpp
+	$(COMPILE.cxx) $<
+
+$(OBJ)/%.o:	$(SRC)/%.cxx
+	$(COMPILE.cxx) $<
+
+# force rebuild
+.PHONY: remake
+remake:	clean $(BIN)/$(EXE)
+
+# execute the program
+.PHONY: run
+run: $(BIN)/$(EXE)
+	./$(BIN)/$(EXE)
+
+# remove previous build and objects
+.PHONY: clean
 clean:
-	@echo "[Cleaning]"
-	@$(RM) $(OBJ_PATH)*.o $(TARGET)
+	$(RM) $(OBJECTS)
+	$(RM) $(DEPENDS)
+	$(RM) $(BIN)/$(EXE)
+
+# remove everything except source
+.PHONY: reset
+reset:
+	$(RM) -r $(OBJ)
+	$(RM) -r $(BIN)
+
+-include $(DEPENDS)
