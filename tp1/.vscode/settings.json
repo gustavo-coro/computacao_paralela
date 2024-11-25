@@ -2,6 +2,8 @@
     "files.associations": {
         "random": "c",
         "stdio.h": "c",
-        "solver_sequential.h": "c"
+        "solver_sequential.h": "c",
+        "graph.h": "c",
+        "solver_mpi.h": "c"
     }
 }

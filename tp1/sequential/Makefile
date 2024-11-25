@@ -89,7 +89,7 @@ remake:	clean $(BIN)/$(EXE)
 # execute the program
 .PHONY: run
 run: $(BIN)/$(EXE)
-	./$(BIN)/$(EXE)
+	./$(BIN)/$(EXE) $(FILE) $(TIME)
 
 # remove previous build and objects
 .PHONY: clean
