@@ -1,8 +1,6 @@
 #include "../include/solver_mpi.h"
 
-int count_common_neighbors_mpi(node* first_list, node* second_list,
-                               int numVertices) {
-    bool* visited = calloc(numVertices, sizeof(bool));
+int count_common_neighbors(node* first_list, node* second_list, bool* visited) {
     int count = 0;
 
     for (node* temp = first_list; temp != NULL; temp = temp->next_vertex) {
@@ -15,7 +13,9 @@ int count_common_neighbors_mpi(node* first_list, node* second_list,
         }
     }
 
-    free(visited);
+    for (node* temp = first_list; temp != NULL; temp = temp->next_vertex) {
+        visited[temp->vertex] = false;
+    }
 
     return count;
 }
@@ -36,13 +36,15 @@ void solver_mpi(graph* gph, char* file_path) {
 
     pair* local_results = (pair*)malloc(sizeof(pair) * (end - start));
 
+    bool* visited = calloc(n, sizeof(bool));
+
     int local_index = 0;
     int pair_index = 0;
     for (int i = 0; i < n; i++) {
         for (int j = i + 1; j < n; j++) {
             if (pair_index >= start && pair_index < end) {
-                local_results[local_index].count = count_common_neighbors_mpi(
-                    gph->node_list[i], gph->node_list[j], n);
+                local_results[local_index].count = count_common_neighbors(
+                    gph->node_list[i], gph->node_list[j], visited);
                 local_results[local_index].dest = j;
                 local_results[local_index].src = i;
 
@@ -54,6 +56,8 @@ void solver_mpi(graph* gph, char* file_path) {
             }
         }
     }
+
+    free(visited);
 
     pair* global_results = NULL;
     if (rank == 0) {
@@ -70,12 +74,13 @@ void solver_mpi(graph* gph, char* file_path) {
             int s = i * num_pairs_process + (i < extra_pairs ? i : extra_pairs);
             int e = s + num_pairs_process + (i < extra_pairs ? 1 : 0);
             int recv_count = e - s;
-            MPI_Recv(global_results + idx, recv_count * sizeof(pair), MPI_BYTE, i, 0,
-                    MPI_COMM_WORLD, &status);
+            MPI_Recv(global_results + idx, recv_count * sizeof(pair), MPI_BYTE,
+                     i, 0, MPI_COMM_WORLD, &status);
             idx += recv_count;
         }
     } else {
-        MPI_Send(local_results, (end - start) * sizeof(pair), MPI_BYTE, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(local_results, (end - start) * sizeof(pair), MPI_BYTE, 0, 0,
+                 MPI_COMM_WORLD);
     }
 
     if (rank == 0) {
